@@ -38,7 +38,8 @@ mmu-y			:= nommu.o
 mmu-$(CONFIG_MMU)	:= highmem.o memory.o mincore.o \
 			   mlock.o mmap.o mmu_gather.o mprotect.o mremap.o \
 			   msync.o page_vma_mapped.o pagewalk.o \
-			   pgtable-generic.o rmap.o vmalloc.o ioremap.o
+			   pgtable-generic.o rmap.o vmalloc.o ioremap.o \
+                           unmap_unit_sz.o
 
 
 ifdef CONFIG_CROSS_MEMORY_ATTACH
@@ -63,11 +64,17 @@ obj-y += page-alloc.o
 obj-y += init-mm.o
 obj-y += memblock.o
 
+
 ifdef CONFIG_MMU
 	obj-$(CONFIG_ADVISE_SYSCALLS)	+= madvise.o
 endif
 
+
+ifdef CONFIG_SWAM
+obj-$(CONFIG_SWAP)	+= swam/
+else
 obj-$(CONFIG_SWAP)	+= page_io.o swap_state.o swapfile.o swap_slots.o
+endif
 obj-$(CONFIG_FRONTSWAP)	+= frontswap.o
 obj-$(CONFIG_ZSWAP)	+= zswap.o
 obj-$(CONFIG_HAS_DMA)	+= dmapool.o

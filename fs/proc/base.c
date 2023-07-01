@@ -1193,6 +1193,63 @@ static const struct file_operations proc_oom_adj_operations = {
 	.llseek		= generic_file_llseek,
 };
 
+
+#ifdef CONFIG_EOOM_KILLER
+#define LAUNCH_SCORE_DEFAULT 0
+static ssize_t launch_score_adj_read(struct file *file, char __user *buf,
+					size_t count, loff_t *ppos)
+{
+	struct task_struct *task = get_proc_task(file_inode(file));
+	char buffer[PROC_NUMBUF];
+	short launch_score_adj = LAUNCH_SCORE_DEFAULT;
+	size_t len;
+
+	if (!task)
+		return -ESRCH;
+	launch_score_adj = task->signal->launch_score_adj;
+	put_task_struct(task);
+	len = snprintf(buffer, sizeof(buffer), "%hd\n", launch_score_adj);
+	return simple_read_from_buffer(buf, count, ppos, buffer, len);
+}
+
+static ssize_t launch_score_adj_write(struct file *file, const char __user *buf,
+					size_t count, loff_t *ppos)
+{
+	char buffer[PROC_NUMBUF];
+	int launch_score_adj;
+	int err;
+
+	memset(buffer, 0, sizeof(buffer));
+	if (count > sizeof(buffer) - 1)
+		count = sizeof(buffer) - 1;
+	if (copy_from_user(buffer, buf, count)) {
+		err = -EFAULT;
+		goto out;
+	}
+
+	err = kstrtoint(strstrip(buffer), 0, &launch_score_adj);
+	if (err)
+		goto out;
+	/* ./include/uapi/linux/oom.h */
+	if (launch_score_adj < OOM_SCORE_ADJ_MIN ||
+			launch_score_adj > OOM_SCORE_ADJ_MAX) {
+		err = -EINVAL;
+		goto out;
+	}
+
+	err = __set_oom_adj(file, launch_score_adj, false);
+out:
+	return err < 0 ? err : count;
+}
+
+static const struct file_operations proc_launch_score_adj_operations = {
+	.read		= launch_score_adj_read,
+	.write		= launch_score_adj_write,
+	.llseek		= default_llseek,
+};
+#endif
+
+
 static ssize_t oom_score_adj_read(struct file *file, char __user *buf,
 					size_t count, loff_t *ppos)
 {
@@ -3202,6 +3259,9 @@ static const struct pid_entry tgid_base_stuff[] = {
 	REG("mounts",     S_IRUGO, proc_mounts_operations),
 	REG("mountinfo",  S_IRUGO, proc_mountinfo_operations),
 	REG("mountstats", S_IRUSR, proc_mountstats_operations),
+#ifdef CONFIG_PROCESS_RECLAIM
+	REG("reclaim",    S_IWUGO, proc_reclaim_operations),
+#endif
 #ifdef CONFIG_PROC_PAGE_MONITOR
 	REG("clear_refs", S_IWUSR, proc_clear_refs_operations),
 	REG("smaps",      S_IRUGO, proc_pid_smaps_operations),
@@ -3235,6 +3295,9 @@ static const struct pid_entry tgid_base_stuff[] = {
 	ONE("oom_score",  S_IRUGO, proc_oom_score),
 	REG("oom_adj",    S_IRUGO|S_IWUSR, proc_oom_adj_operations),
 	REG("oom_score_adj", S_IRUGO|S_IWUSR, proc_oom_score_adj_operations),
+#ifdef CONFIG_EOOM_KILLER
+	REG("launch_score_adj",    S_IRUGO|S_IWUSR, proc_launch_score_adj_operations),
+#endif
 #ifdef CONFIG_AUDIT
 	REG("loginuid",   S_IWUSR|S_IRUGO, proc_loginuid_operations),
 	REG("sessionid",  S_IRUGO, proc_sessionid_operations),
@@ -3577,6 +3640,10 @@ static const struct pid_entry tid_base_stuff[] = {
 	ONE("oom_score", S_IRUGO, proc_oom_score),
 	REG("oom_adj",   S_IRUGO|S_IWUSR, proc_oom_adj_operations),
 	REG("oom_score_adj", S_IRUGO|S_IWUSR, proc_oom_score_adj_operations),
+ #ifdef CONFIG_EOOM_KILLER
+        REG("launch_score_adj",    S_IRUGO|S_IWUSR, proc_launch_score_adj_operations),
+#endif
+
 #ifdef CONFIG_AUDIT
 	REG("loginuid",  S_IWUSR|S_IRUGO, proc_loginuid_operations),
 	REG("sessionid",  S_IRUGO, proc_sessionid_operations),

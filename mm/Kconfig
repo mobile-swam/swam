@@ -242,6 +242,25 @@ config COMPACTION
 	  it and then we would be really interested to hear about that at
 	  linux-mm@kvack.org.
 
+
+config PROCESS_RECLAIM
+	bool "Enable per-process reclaim"
+	depends on PROC_FS
+	default n
+	help
+	 It allows to reclaim pages of the process by /proc/PID/reclaim.
+
+	 a. (echo file > /proc/PID/reclaim) reclaims file-backed pages only.
+	 b. (echo anon > /proc/PID/reclaim) reclaims anonymous pages only.
+	 c. (echo so   > /proc/PID/reclaim) reclaims anonymous SO pages only.
+	 d. (echo [addr] [size-byte] > /proc/PID/reclaim) reclaims pages of
+            a specified range to support a fine-grained per-process reclamation.
+            e.g., echo 0x100000 8K > /proc/pid/reclaim
+                 (in order to reclaim pages in 0x100000-0x102000)
+	 e. (echo all  > /proc/PID/reclaim) reclaims all pages.
+
+	 Any other value is ignored.
+
 #
 # support for free page reporting
 config PAGE_REPORTING

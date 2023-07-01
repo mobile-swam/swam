@@ -4492,6 +4492,12 @@ S:	Maintained
 F:	mm/memcontrol.c
 F:	mm/swap_cgroup.c
 
+MOBILE-AWARE SWAM
+M:      Geunsik Lim <leemgs@gmail.com>
+S:      Maintained
+F:      mm/swam/*
+F:      include/linux/unmap_unit_sz.*
+
 CORETEMP HARDWARE MONITORING DRIVER
 M:	Fenghua Yu <fenghua.yu@intel.com>
 L:	linux-hwmon@vger.kernel.org

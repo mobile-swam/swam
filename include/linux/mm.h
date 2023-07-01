@@ -213,6 +213,10 @@ static inline void __mm_zero_struct_page(struct page *page)
 
 extern int sysctl_max_map_count;
 
+extern unsigned long sysctl_anon_min_kbytes;
+extern unsigned long sysctl_clean_low_kbytes;
+extern unsigned long sysctl_clean_min_kbytes;
+
 extern unsigned long sysctl_user_reserve_kbytes;
 extern unsigned long sysctl_admin_reserve_kbytes;
 
@@ -716,6 +720,18 @@ static inline bool vma_is_foreign(struct vm_area_struct *vma)
 static inline bool vma_is_accessible(struct vm_area_struct *vma)
 {
 	return vma->vm_flags & VM_ACCESS_FLAGS;
+}
+
+static inline bool vma_is_anonymous_swam(struct vm_area_struct *vma)
+{
+        int vma_name_so; vma_name_so = 0;
+        /* todo, fixme, get the dentry name for named mappings.
+         * a. arch_vma_name(vma) to identify vdso, heap, and stack.
+         * b. vma_get_anon_name(vma) to get a name of anonymous pages.
+         * c. seq_print_vma_name(m, vma) to create /proc/PID/smaps
+         */
+        vma_name_so = !strstr(vma->vm_ops->name(vma), ".so");
+	return (!vma->vm_ops + vma_name_so);
 }
 
 #ifdef CONFIG_SHMEM

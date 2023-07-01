@@ -218,7 +218,11 @@ long oom_badness(struct task_struct *p, unsigned long totalpages)
 	 * unkillable or have been already oom reaped or the are in
 	 * the middle of vfork
 	 */
+#ifdef CONFIG_EOOM_KILLER
+	adj = (long)p->signal->oom_score_adj + (long)p->signal->launch_score_adj;
+#else
 	adj = (long)p->signal->oom_score_adj;
+#endif
 	if (adj == OOM_SCORE_ADJ_MIN ||
 			test_bit(MMF_OOM_SKIP, &p->mm->flags) ||
 			in_vfork(p)) {

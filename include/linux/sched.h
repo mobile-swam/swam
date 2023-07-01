@@ -1397,6 +1397,18 @@ struct task_struct {
 	 */
 };
 
+
+/* Do to the insanities of de_thread it is possible for a process
+ * to have the pid of the thread group leader without actually being
+ * the thread group leader.  For iteration through the pids in proc
+ * all we care about is that we have a task with the appropriate
+ * pid, we don't actually care if we have the right task.
+ */
+static inline int has_group_leader_pid(struct task_struct *p)
+{
+	return p->pid == p->tgid;
+}
+
 static inline struct pid *task_pid(struct task_struct *task)
 {
 	return task->thread_pid;

@@ -1,150 +1,144 @@
-# How do I submit patches to Android Common Kernels
+[![GitHub license](https://dmlc.github.io/img/apache2.svg)](LICENSE) 
+![Gitter](https://img.shields.io/gitter/room/mobile-swam/swam) ![GitHub repo size](https://img.shields.io/github/repo-size/mobile-swam/swam) ![GitHub issues](https://img.shields.io/github/issues/mobile-swam/swam) ![GitHub pull requests](https://img.shields.io/github/issues-pr/mobile-swam/swam) ![GitHub contributors](https://img.shields.io/github/contributors/mobile-swam/swam)
 
-1. BEST: Make all of your changes to upstream Linux. If appropriate, backport to the stable releases.
-   These patches will be merged automatically in the corresponding common kernels. If the patch is already
-   in upstream Linux, post a backport of the patch that conforms to the patch requirements below.
-   - Do not send patches upstream that contain only symbol exports. To be considered for upstream Linux,
-additions of `EXPORT_SYMBOL_GPL()` require an in-tree modular driver that uses the symbol -- so include
-the new driver or changes to an existing driver in the same patchset as the export.
-   - When sending patches upstream, the commit message must contain a clear case for why the patch
-is needed and beneficial to the community. Enabling out-of-tree drivers or functionality is not
-not a persuasive case.
+SWAM kernel
+============
 
-2. LESS GOOD: Develop your patches out-of-tree (from an upstream Linux point-of-view). Unless these are
-   fixing an Android-specific bug, these are very unlikely to be accepted unless they have been
-   coordinated with kernel-team@android.com. If you want to proceed, post a patch that conforms to the
-   patch requirements below.
+This page details the methods for building and running the SWAM kernel. 
 
-# Common Kernel patch requirements
+## Pre-requisites
+We assume that you use Ubuntu 22.04.2 (64bit) LTS distribution. Firs of all you must install the repo package to maintain the related git repositories. 
 
-- All patches must conform to the Linux kernel coding standards and pass `script/checkpatch.pl`
-- Patches shall not break gki_defconfig or allmodconfig builds for arm, arm64, x86, x86_64 architectures
-(see  https://source.android.com/setup/build/building-kernels)
-- If the patch is not merged from an upstream branch, the subject must be tagged with the type of patch:
-`UPSTREAM:`, `BACKPORT:`, `FROMGIT:`, `FROMLIST:`, or `ANDROID:`.
-- All patches must have a `Change-Id:` tag (see https://gerrit-review.googlesource.com/Documentation/user-changeid.html)
-- If an Android bug has been assigned, there must be a `Bug:` tag.
-- All patches must have a `Signed-off-by:` tag by the author and the submitter
-
-Additional requirements are listed below based on patch type
-
-## Requirements for backports from mainline Linux: `UPSTREAM:`, `BACKPORT:`
-
-- If the patch is a cherry-pick from Linux mainline with no changes at all
-    - tag the patch subject with `UPSTREAM:`.
-    - add upstream commit information with a `(cherry picked from commit ...)` line
-    - Example:
-        - if the upstream commit message is
-```
-        important patch from upstream
-
-        This is the detailed description of the important patch
-
-        Signed-off-by: Fred Jones <fred.jones@foo.org>
-```
->- then Joe Smith would upload the patch for the common kernel as
-```
-        UPSTREAM: important patch from upstream
-
-        This is the detailed description of the important patch
-
-        Signed-off-by: Fred Jones <fred.jones@foo.org>
-
-        Bug: 135791357
-        Change-Id: I4caaaa566ea080fa148c5e768bb1a0b6f7201c01
-        (cherry picked from commit c31e73121f4c1ec41143423ac6ce3ce6dafdcec1)
-        Signed-off-by: Joe Smith <joe.smith@foo.org>
+```bash
+sudo apt -y update
+sudo apt -y install curl
+python3 --version
+  Python 3.10.6
+mkdir ~/bin/
+curl http://commondatastorage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
+chmod a+x ~/bin/repo
+vim ~/.bashrc
+  export PATH="~/bin:$PATH"
 ```
 
-- If the patch requires any changes from the upstream version, tag the patch with `BACKPORT:`
-instead of `UPSTREAM:`.
-    - use the same tags as `UPSTREAM:`
-    - add comments about the changes under the `(cherry picked from commit ...)` line
-    - Example:
+## How to build 
+
+To use SWAM, you must first build the SWAM kernel source. 
+SWAM's features are not dependent on the smartphone device, so they can be utilized in the general Linux system environment as well as in embedded systems such as smartphones. 
+
+#### How to build the Android Linux kernel
+We assume that you use the reference smartphone such as the Pixel 6 (Android 12).
+This existing SWAM source can be merged with higher Linux kernel versions using the git merge command.
+* Pixel6-based Android Kernel: private/gs-google (Linux 5.10.43)
+* Pixel6-based kernel config.: private/gs-google/arch/arm64/configs/slider_gki.fragment
+```bash
+$ cd /work/swam/
+$ mkdir android-kernel && cd android-kernel
+$ repo init -u https://android.googlesource.com/kernel/manifest -b android-gs-raviole-5.10-android12-qpr1-d
+$ repo sync -j$(nproc)
+$ mv aosp aosp.disable
+$ cd private
+$ mv gs-google gs-google.disable
+$ git clone https://github.com/mobile-swam/swam.git swam.git
+$ ln -s swam.git gs-google
+$ cd ..
+$ cat ./private/gs-google/Makefile | head
+
+VERSION = 5
+PATCHLEVEL = 10
+SUBLEVEL = 43
+EXTRAVERSION =
+NAME = Dare mighty things
 ```
-        BACKPORT: important patch from upstream
 
-        This is the detailed description of the important patch
-
-        Signed-off-by: Fred Jones <fred.jones@foo.org>
-
-        Bug: 135791357
-        Change-Id: I4caaaa566ea080fa148c5e768bb1a0b6f7201c01
-        (cherry picked from commit c31e73121f4c1ec41143423ac6ce3ce6dafdcec1)
-        [joe: Resolved minor conflict in drivers/foo/bar.c ]
-        Signed-off-by: Joe Smith <joe.smith@foo.org>
+We've done the work to compile the SWAM kernel source, now we'll work on building the kernel source ourselves. 
+```bash
+$ time build/build.sh -j$(nproc)
+    ... Case1: Wait for 56 minutes with Intel i5-3570@3.40GHz + DDR3 16GB + SSD 1TB  
+    ... Case2: wait for 32 minutes with Intel Xeon E3-1275v5@3.60GHz + DDR4 32GB + SSD 512GB  
+```
+ 
+In order to complete the kernel source build quickly, you'll need a high-performance computer. If the kernel source build completes successfully, you should see binary files like the ones below. 
+```bash
+$ ls -al ./out/android-gs-pixel-5.10/dist/*.img
+-rw-rw-r-- 1 invain invain 67,108,864  6 29 22:19 ./out/android-gs-pixel-5.10/dist/boot.img
+-rw-rw-r-- 1 invain invain    493,712  6 29 22:18 ./out/android-gs-pixel-5.10/dist/dtb.img
+-rw-rw-r-- 1 invain invain  21,686,18  6 29 20:24 ./out/android-gs-pixel-5.10/dist/dtbo.img
+-rw-rw-r-- 1 invain invain 14,785,901  6 29 22:17 ./out/android-gs-pixel-5.10/dist/initramfs.img
+-rw-rw-r-- 1 invain invain         38  6 29 22:19 ./out/android-gs-pixel-5.10/dist/vendor-bootconfig.img
+-rw-rw-r-- 1 invain invain 34,746,368  6 29 22:19 ./out/android-gs-pixel-5.10/dist/vendor_boot.img
+-rw-rw-r-- 1 invain invain 55,689,216  6 29 22:17 ./out/android-gs-pixel-5.10/dist/vendor_dlkm.img
+$ ls -al ./out/android-gs-pixel-5.10/dist/*.lz4
+-rw-rw-r-- 1 invain invain 23,461,879  6 29 21:34 ./out/android-gs-pixel-5.10/dist/Image.lz4
+-rw-rw-r-- 1 invain invain 194,56,178  6 29 22:19 ./out/android-gs-pixel-5.10/dist/ramdisk.lz4
 ```
 
-## Requirements for other backports: `FROMGIT:`, `FROMLIST:`,
-
-- If the patch has been merged into an upstream maintainer tree, but has not yet
-been merged into Linux mainline
-    - tag the patch subject with `FROMGIT:`
-    - add info on where the patch came from as `(cherry picked from commit <sha1> <repo> <branch>)`. This
-must be a stable maintainer branch (not rebased, so don't use `linux-next` for example).
-    - if changes were required, use `BACKPORT: FROMGIT:`
-    - Example:
-        - if the commit message in the maintainer tree is
+When you must modify specific kernel source codes, you can save the compilation time
+(e.g., from 17 minutes to 53 seconds) by compiling the modified files only as follows.
+```bash
+* Option1: $ vi ./build/build.sh --> Add "exit 999" after Line 656 ("Building kernel") (To build kernel image only)
+* Option2: $ time SKIP_MRPROPER=1  SKIP_DEFCONFIG=1  SKIP_EXT_MODULES=1 SKIP_CP_KERNEL_HDR=1 IN_KERNEL_MODULES=0  build/build.sh -j4 
+* Option3: $ ... V=1 M=./mm/ (To compile specific kernel modules of ./mm/ folder only)
+    ... wait for 53 seconds ...
 ```
-        important patch from upstream
 
-        This is the detailed description of the important patch
-
-        Signed-off-by: Fred Jones <fred.jones@foo.org>
-```
->- then Joe Smith would upload the patch for the common kernel as
-```
-        FROMGIT: important patch from upstream
-
-        This is the detailed description of the important patch
-
-        Signed-off-by: Fred Jones <fred.jones@foo.org>
-
-        Bug: 135791357
-        (cherry picked from commit 878a2fd9de10b03d11d2f622250285c7e63deace
-         https://git.kernel.org/pub/scm/linux/kernel/git/foo/bar.git test-branch)
-        Change-Id: I4caaaa566ea080fa148c5e768bb1a0b6f7201c01
-        Signed-off-by: Joe Smith <joe.smith@foo.org>
+#### Unlock the reference SmartPhone
+enable oem unlock in development mode
+```bash
+$ adb reboot bootloader
+$ fastboot flashing unlock
 ```
 
 
-- If the patch has been submitted to LKML, but not accepted into any maintainer tree
-    - tag the patch subject with `FROMLIST:`
-    - add a `Link:` tag with a link to the submittal on lore.kernel.org
-    - add a `Bug:` tag with the Android bug (required for patches not accepted into
-a maintainer tree)
-    - if changes were required, use `BACKPORT: FROMLIST:`
-    - Example:
-```
-        FROMLIST: important patch from upstream
-
-        This is the detailed description of the important patch
-
-        Signed-off-by: Fred Jones <fred.jones@foo.org>
-
-        Bug: 135791357
-        Link: https://lore.kernel.org/lkml/20190619171517.GA17557@someone.com/
-        Change-Id: I4caaaa566ea080fa148c5e768bb1a0b6f7201c01
-        Signed-off-by: Joe Smith <joe.smith@foo.org>
+#### How to flash the ‘dirty’ kernel
+When you execute the "LTO=thin ./build/build.sh" command, the 'dirty' kernel image would be generated into ./out/ folder. 
+Then, pack boot images as follows.
+```bash
+$ cd ./out/.../dist
+$ fastboot flash boot boot.img
+$ fastboot flash vendor_boot vendor_boot.img
+$ fastboot reboot fastboot
+$ fastboot flash vendor_dlkm vendor_dlkm.img
 ```
 
-## Requirements for Android-specific patches: `ANDROID:`
-
-- If the patch is fixing a bug to Android-specific code
-    - tag the patch subject with `ANDROID:`
-    - add a `Fixes:` tag that cites the patch with the bug
-    - Example:
-```
-        ANDROID: fix android-specific bug in foobar.c
-
-        This is the detailed description of the important fix
-
-        Fixes: 1234abcd2468 ("foobar: add cool feature")
-        Change-Id: I4caaaa566ea080fa148c5e768bb1a0b6f7201c01
-        Signed-off-by: Joe Smith <joe.smith@foo.org>
+The device can boot into recovery now. 
+But if you want to boot into the system, you also need to disable the verified boot by running the below commands.
+```bash
+$ ./build/build-tools/path/linux-x86/avbtool make_vbmeta_image --flags 2 --padding_size 4096 --output vbmeta_disabled.img
+$ fastboot flash vbmeta --disable-verity --disable-verification ./vbmeta_disabled.img
 ```
 
-- If the patch is a new feature
-    - tag the patch subject with `ANDROID:`
-    - add a `Bug:` tag with the Android bug (required for android-specific features)
 
+#### How to build a custom Android platform image
+
+If you need to modify the Android platform to try various experiments, you can compile the entire code of the Android platform as follows. 
+However, compiling the entire Android platform will take more than 10 hours on average in a normal desktop PC environment. 
+
+```bash
+$ mkdir aosp
+$ cd aosp
+$ repo init -u https://android.googlesource.com/platform/manifest -b master
+$ repo sync -c -j16
+$ wget https://dl.google.com/dl/android/aosp/google_devices-oriole-sq1d.220205.004-a2628da5.tgz
+$ source build/envsetup.sh
+$ lunch aosp_oriole_hwasan-userdebug
+$ m
+$ cp ../android-kernel/out/android-gs-pixel-5.10/dist/Image.lz4 ./device/google/raviole-kernel/
+$ cp ../android-kernel/out/android-gs-pixel-5.10/dist/*.ko ./device/google/raviole-kernel/
+$ cd out/target/product/oriole
+$ adb reboot bootloader
+$ ANDROID_PRODUCT_OUT=`pwd` fastboot flashall -w
+```
+
+
+## Reference
+You can refer to the following websites to modify and manipulate the Linux kernel used on the Android platform. 
+* https://source.android.com/docs/setup/build/building-kernels 
+* https://source.android.com/setup/build/building-kernels
+* https://android.googlesource.com/kernel/manifest
+* https://www.xda-developers.com/
+
+
+## Publication
+
+* Geunsik Lim, Donghyun Kang, MyungJoo Ham, and Young Ik Eom, "[SWAM: Revisiting Swap and OOMK for Improving Application Responsiveness on Mobile Devices](https://arxiv.org/abs/2306.08345)," MobiCom 2023 (29th Annual International Conference On Mobile Computing And Networking), Oct-2023.

@@ -69,6 +69,8 @@
 #include <linux/userfaultfd_k.h>
 #include <linux/dax.h>
 #include <linux/oom.h>
+#include <linux/unmap_unit_sz.h>
+
 #include <linux/numa.h>
 #include <linux/perf_event.h>
 #include <linux/ptrace.h>
@@ -1377,6 +1379,11 @@ again:
 	return addr;
 }
 
+#ifdef CONFIG_FAST_SWAPOUT_MUNMAP
+/* Let's set-up lage size to get straight-line efficiency */
+#define ZAP_BLOCK_SIZE        (unmap_unit_sz * PAGE_SIZE)
+#endif
+
 static inline unsigned long zap_pmd_range(struct mmu_gather *tlb,
 				struct vm_area_struct *vma, pud_t *pud,
 				unsigned long addr, unsigned long end,
@@ -1412,6 +1419,11 @@ next:
 	return addr;
 }
 
+#ifdef CONFIG_FAST_SWAPOUT_MUNMAP
+/* Let's set-up lage size to get straight-line efficiency */
+#define ZAP_BLOCK_SIZE        (unmap_unit_sz * PAGE_SIZE)
+#endif
+
 static inline unsigned long zap_pud_range(struct mmu_gather *tlb,
 				struct vm_area_struct *vma, p4d_t *p4d,
 				unsigned long addr, unsigned long end,
@@ -1419,6 +1431,9 @@ static inline unsigned long zap_pud_range(struct mmu_gather *tlb,
 {
 	pud_t *pud;
 	unsigned long next;
+#ifdef CONFIG_FAST_SWAPOUT_MUNMAP
+        int i = 0;
+#endif
 
 	pud = pud_offset(p4d, addr);
 	do {
@@ -1435,7 +1450,17 @@ static inline unsigned long zap_pud_range(struct mmu_gather *tlb,
 			continue;
 		next = zap_pmd_range(tlb, vma, pud, addr, next, details);
 next:
+#ifdef CONFIG_FAST_SWAPOUT_MUNMAP
+        if (i < ZAP_BLOCK_SIZE)
+        {
+                i++;
+        }
+        else
+        {
 		cond_resched();
+                i = 0;
+        }
+#endif
 	} while (pud++, addr = next, addr != end);
 
 	return addr;
