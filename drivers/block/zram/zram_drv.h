@@ -19,8 +19,6 @@
 #include <linux/zsmalloc.h>
 #include <linux/crypto.h>
 
-#include "zcomp.h"
-
 #define SECTORS_PER_PAGE_SHIFT	(PAGE_SHIFT - SECTOR_SHIFT)
 #define SECTORS_PER_PAGE	(1 << SECTORS_PER_PAGE_SHIFT)
 #define ZRAM_LOGICAL_BLOCK_SHIFT 12
@@ -68,25 +66,28 @@ struct zram_table_entry {
 #endif
 };
 
+enum zram_stat_item {
+	COMPRESSED_SIZE,	/* compressed size of pages stored */
+	NR_READ,		/* No. of reads */
+	NR_WRITE,		/* No. of writes */
+	NR_FAILED_READ,		/* can happen when memory is too low */
+	NR_FAILED_WRITE,	/* can happen when memory is too low */
+	NR_INVALID_IO, 		/* non-page-aligned I/O requests */
+	NR_NOTIFY_FREE,		/* no. of swap slot free notifications */
+	NR_SAME_PAGE,		/* no. of same element filled pages */
+	NR_HUGE_PAGE,		/* no. of huge pages */
+	NR_HUGE_PAGE_SINCE,	/* no. of huge pages since zram set up */
+	NR_PAGE_STORED,		/* no. of pages currently stored */
+	NR_WRITESTALL,		/* no. of write slow paths */
+	NR_MISS_FREE,		/* no. of missed free */
+	NR_BD_COUNT,		/* no. of pages in backing device */
+	NR_BD_READ,		/* no. of reads from backing device */
+	NR_BD_WRITE,		/* no. of writes from backing device */
+	NR_ZRAM_STAT_ITEM,
+};
+
 struct zram_stats {
-	atomic64_t compr_data_size;	/* compressed size of pages stored */
-	atomic64_t num_reads;	/* failed + successful */
-	atomic64_t num_writes;	/* --do-- */
-	atomic64_t failed_reads;	/* can happen when memory is too low */
-	atomic64_t failed_writes;	/* can happen when memory is too low */
-	atomic64_t invalid_io;	/* non-page-aligned I/O requests */
-	atomic64_t notify_free;	/* no. of swap slot free notifications */
-	atomic64_t same_pages;		/* no. of same element filled pages */
-	atomic64_t huge_pages;		/* no. of huge pages */
-	atomic64_t pages_stored;	/* no. of pages currently stored */
-	atomic_long_t max_used_pages;	/* no. of maximum pages stored */
-	atomic64_t writestall;		/* no. of write slow paths */
-	atomic64_t miss_free;		/* no. of missed free */
-#ifdef	CONFIG_ZRAM_WRITEBACK
-	atomic64_t bd_count;		/* no. of pages in backing device */
-	atomic64_t bd_reads;		/* no. of reads from backing device */
-	atomic64_t bd_writes;		/* no. of writes from backing device */
-#endif
+	long items[NR_ZRAM_STAT_ITEM];
 };
 
 struct zram {
@@ -101,7 +102,9 @@ struct zram {
 	 */
 	unsigned long limit_pages;
 
-	struct zram_stats stats;
+	struct zram_stats __percpu *pcp_stats;
+	atomic_long_t max_used_pages;
+
 	/*
 	 * This is the limit on amount of *uncompressed* worth of data
 	 * we can store in a disk.
@@ -126,4 +129,19 @@ struct zram {
 	struct dentry *debugfs_dir;
 #endif
 };
+
+
+void zram_slot_lock(struct zram *zram, u32 index);
+void zram_slot_unlock(struct zram *zram, u32 index);
+void zram_slot_update(struct zram *zram, u32 index, unsigned long handle,
+			unsigned int comp_len);
+
+unsigned long zram_get_handle(struct zram *zram, u32 index);
+size_t zram_get_obj_size(struct zram *zram, u32 index);
+unsigned long zram_get_element(struct zram *zram, u32 index);
+bool zram_test_flag(struct zram *zram, u32 index, enum zram_pageflags flag);
+
+struct bio;
+void zram_bio_endio(struct zram *zram, struct bio *bio, bool is_write, int err);
+void zram_page_write_endio(struct zram *zram, struct page *page, int err);
 #endif

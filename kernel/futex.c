@@ -44,6 +44,7 @@
 #include <asm/futex.h>
 
 #include "locking/rtmutex_common.h"
+#include <trace/hooks/futex.h>
 
 /*
  * READ this before attempting to hack on futexes!
@@ -587,7 +588,7 @@ again:
 		lock_page(page);
 		shmem_swizzled = PageSwapCache(page) || page->mapping;
 		unlock_page(page);
-		put_page(page);
+		put_user_page(page);
 
 		if (shmem_swizzled)
 			goto again;
@@ -637,7 +638,7 @@ again:
 
 		if (READ_ONCE(page->mapping) != mapping) {
 			rcu_read_unlock();
-			put_page(page);
+			put_user_page(page);
 
 			goto again;
 		}
@@ -645,7 +646,7 @@ again:
 		inode = READ_ONCE(mapping->host);
 		if (!inode) {
 			rcu_read_unlock();
-			put_page(page);
+			put_user_page(page);
 
 			goto again;
 		}
@@ -657,7 +658,7 @@ again:
 	}
 
 out:
-	put_page(page);
+	put_user_page(page);
 	return err;
 }
 
@@ -2226,6 +2227,7 @@ queue_unlock(struct futex_hash_bucket *hb)
 static inline void __queue_me(struct futex_q *q, struct futex_hash_bucket *hb)
 {
 	int prio;
+	bool already_on_hb = false;
 
 	/*
 	 * The priority used to register this element is
@@ -2238,7 +2240,9 @@ static inline void __queue_me(struct futex_q *q, struct futex_hash_bucket *hb)
 	prio = min(current->normal_prio, MAX_RT_PRIO);
 
 	plist_node_init(&q->list, prio);
-	plist_add(&q->list, &hb->chain);
+	trace_android_vh_alter_futex_plist_add(&q->list, &hb->chain, &already_on_hb);
+	if (!already_on_hb)
+		plist_add(&q->list, &hb->chain);
 	q->task = current;
 }
 

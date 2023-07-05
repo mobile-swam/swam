@@ -206,7 +206,7 @@ config SERIAL_MESON
 
 config SERIAL_MESON_CONSOLE
 	bool "Support for console on meson"
-	depends on SERIAL_MESON=y
+	depends on SERIAL_MESON
 	select SERIAL_CORE_CONSOLE
 	select SERIAL_EARLYCON
 	help
@@ -236,7 +236,6 @@ config SERIAL_CLPS711X_CONSOLE
 
 config SERIAL_SAMSUNG
 	tristate "Samsung SoC serial support"
-	depends on PLAT_SAMSUNG || ARCH_S5PV210 || ARCH_EXYNOS || COMPILE_TEST
 	select SERIAL_CORE
 	help
 	  Support for the on-chip UARTs on the Samsung S3C24XX series CPUs,
@@ -275,6 +274,24 @@ config SERIAL_SAMSUNG_CONSOLE
 	  "console=ttySACx". (Try "man bootparam" or see the documentation of
 	  your boot loader about how to pass options to the kernel at
 	  boot time.)
+
+config SERIAL_EXYNOS
+	tristate "Exynos SoC serial support"
+	depends on SERIAL_SAMSUNG
+	select SERIAL_CORE
+	help
+	  Support for the on-chip UARTs on the Samsung Exynos series CPUs,
+	  providing /dev/ttySAC0, 1 and 2 (note, some machines may not
+	  provide all of these ports, depending on how the serial port
+	  pins are configured.
+
+config SERIAL_EXYNOS_UARTS
+	int
+	depends on SERIAL_EXYNOS
+	default 24
+	help
+	  Select the number of available UART ports for the Samsung
+	  Exynos serial driver
 
 config SERIAL_SIRFSOC
 	tristate "SiRF SoC Platform Serial port support"
@@ -966,6 +983,14 @@ config SERIAL_MSM_CONSOLE
 	depends on SERIAL_MSM=y
 	select SERIAL_CORE_CONSOLE
 	select SERIAL_EARLYCON
+
+config SERIAL_MSM_GENI_EARLY_CONSOLE
+	bool "MSM on-chip GENI HW based early console support"
+	select SERIAL_CORE_CONSOLE
+	select SERIAL_EARLYCON
+	help
+	  Serial early console driver for Qualcomm Technologies Inc's GENI
+	  based QUP hardware.
 
 config SERIAL_QCOM_GENI
 	tristate "QCOM on-chip GENI based serial port support"

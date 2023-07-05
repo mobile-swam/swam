@@ -80,3 +80,9 @@ obj-$(CONFIG_VIDEO_QCOM_CAMSS)		+= qcom/camss/
 obj-$(CONFIG_VIDEO_QCOM_VENUS)		+= qcom/venus/
 
 obj-y					+= sunxi/
+
+obj-$(CONFIG_VIDEO_EXYNOS)		+= exynos/
+
+obj-$(CONFIG_BIGOCEAN)                  += bigocean/
+
+obj-$(CONFIG_VIDEO_EXYNOS_SMFC)		+= exynos/smfc/
